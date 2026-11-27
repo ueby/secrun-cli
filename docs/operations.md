@@ -78,7 +78,7 @@ válidos, mas nunca valores nem chaves inválidas.
 
 | Mensagem | Causa provável | Ação |
 |---|---|---|
-| `região AWS não definida` | Sem `AWS_REGION` e sem acesso ao IMDS | Defina `SECRUN_REGION` ou `AWS_REGION`. |
+| `região AWS não definida` | Nenhuma região configurada, e o metadata da instância EC2 (IMDS), consultado por até 2s, não respondeu (por exemplo, fora da EC2) ou está desativado (`AWS_EC2_METADATA_DISABLED=true`) | Defina `--region`, `SECRUN_REGION` ou `AWS_REGION`. |
 | `AccessDeniedException` | Política IAM sem o ARN do segredo, ou permissão na role errada (Execution Role vs. Task Role) | Revise a política; confira o sufixo `-??????`. |
 | `ResourceNotFoundException` | Nome do segredo ou região incorretos | Confira `SECRUN_IDS` e a região. |
 | `KMS ... AccessDenied` | Segredo com CMK sem `kms:Decrypt` | Adicione a permissão de KMS. |
