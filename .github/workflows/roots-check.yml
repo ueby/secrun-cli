@@ -1,0 +1,95 @@
+# Verifica mensalmente se há uma versão nova dos certificados raiz embutidos
+# (golang.org/x/crypto/x509roots/fallback). O Dependabot não consegue
+# atualizar esse módulo (sem tags; issue #3), então este workflow abre ou
+# atualiza UMA issue pedindo a atualização via `make update-roots` + PR.
+#
+# Ele abre issue e não PR: um PR criado pelo GITHUB_TOKEN não dispararia os
+# checks obrigatórios da main.
+name: Roots check
+
+on:
+  schedule:
+    - cron: "17 9 1 * *" # dia 1 de cada mês
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: roots-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Certificados raiz embutidos
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write # abrir/atualizar a issue de atualização
+    env:
+      MODULE: golang.org/x/crypto/x509roots/fallback
+      ISSUE_TITLE: "Atualizar certificados raiz embutidos (x509roots/fallback)"
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Comparar versão em uso com a mais recente
+        id: versions
+        run: |
+          set -eu
+          current=$(go list -m -f '{{.Version}}' "$MODULE")
+          latest=$(go list -m -f '{{.Version}}' "$MODULE@latest")
+          echo "Em uso:       $current"
+          echo "Mais recente: $latest"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          {
+            echo "| Em uso | Mais recente |"
+            echo "|---|---|"
+            echo "| \`$current\` | \`$latest\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Abrir ou atualizar a issue
+        if: steps.versions.outputs.current != steps.versions.outputs.latest
+        env:
+          CURRENT: ${{ steps.versions.outputs.current }}
+          LATEST: ${{ steps.versions.outputs.latest }}
+        run: |
+          set -eu
+          body=$(cat <<EOF
+          Há uma versão nova dos certificados raiz embutidos no binário (\`$MODULE\`),
+          usados quando a imagem não tem \`ca-certificates\`.
+
+          | Em uso | Mais recente |
+          |---|---|
+          | \`$CURRENT\` | \`$LATEST\` |
+
+          O Dependabot não atualiza este módulo (#3). Para atualizar:
+
+          \`\`\`bash
+          git switch -c fix/<issue>-update-roots origin/main
+          make update-roots
+          make check
+          \`\`\`
+
+          Abra um PR com o título \`fix(deps): atualiza certificados raiz embutidos\` (gera versão patch).
+
+          _Issue mantida automaticamente pelo workflow [Roots check]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/workflows/roots-check.yml)._
+          EOF
+          )
+          existing=$(gh issue list --state open --search "in:title \"$ISSUE_TITLE\"" --json number,title \
+            --jq "map(select(.title == env.ISSUE_TITLE)) | .[0].number // empty")
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --body "$body"
+            echo "Issue #$existing atualizada." >> "$GITHUB_STEP_SUMMARY"
+          else
+            url=$(gh issue create --title "$ISSUE_TITLE" --label dependencies --body "$body")
+            echo "Issue criada: $url" >> "$GITHUB_STEP_SUMMARY"
+          fi
