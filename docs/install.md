@@ -22,7 +22,14 @@ HTTPS**, **valida o SHA-256** e instala em `/usr/local/bin` de forma atômica.
 Ele é POSIX `sh` puro, então funciona no `dash` (Debian/Ubuntu), no `ash` do
 busybox (Alpine) e no macOS.
 
-Use sempre o `install.sh` **da própria release**, com a **versão fixa**. Assim
+A forma mais curta instala a versão mais recente (`-v` é opcional):
+
+```bash
+curl -fsSL https://github.com/ueby/secrun-cli/releases/latest/download/install.sh | sudo sh
+```
+
+Em builds de produção, use sempre o `install.sh` **da própria release**, com a
+**versão fixa**. Assim
 você executa exatamente o código revisado e publicado naquela versão, e não o
 estado atual do branch `main`. Os exemplos usam `v0.1.0`; consulte a versão mais
 recente em [Releases](https://github.com/ueby/secrun-cli/releases/latest) e as
@@ -157,14 +164,26 @@ Arquivo completo: [`examples/docker/ghcr.Dockerfile`](../examples/docker/ghcr.Do
 ## Sem Docker
 
 ```bash
-# Linux/macOS, diretório do usuário (sem sudo)
+# Como root: o sudo vai no "sh", não no "curl"
+curl -fsSL https://github.com/ueby/secrun-cli/releases/latest/download/install.sh | sudo sh
+
+# Sem sudo, no diretório do usuário (adicione-o ao PATH, se ainda não estiver)
+curl -fsSL https://github.com/ueby/secrun-cli/releases/latest/download/install.sh | sh -s -- -d "$HOME/.local/bin"
+export PATH="$HOME/.local/bin:$PATH"
+
+# Versão fixa
 V=v0.1.0
-curl -fsSL "https://github.com/ueby/secrun-cli/releases/download/$V/install.sh" \
-  | sh -s -- -v "$V" -d "$HOME/.local/bin"
+curl -fsSL "https://github.com/ueby/secrun-cli/releases/download/$V/install.sh" | sudo sh -s -- -v "$V"
 
 # Via Go
 go install github.com/ueby/secrun-cli/cmd/secrun@latest
 ```
+
+> `sudo curl ... | sh` **não funciona**: o `sudo` eleva só o download, e o
+> instalador roda sem privilégios. Nesse caso (ou sempre que faltar permissão no
+> destino), o `install.sh` para **antes do download** e mostra os dois comandos
+> acima, prontos para copiar. Com `-d` num diretório fora do `PATH`, ele instala
+> e avisa como ajustar o `PATH`.
 
 ## Validação
 
@@ -176,5 +195,6 @@ secrun version
 O `install.sh` é validado no CI em `debian:trixie-slim`, `debian:bookworm-slim`,
 `ubuntu:24.04` e `alpine:3.24`, nas plataformas `linux/amd64`, `linux/arm64` e
 `linux/arm/v7`. Os testes instalam o binário, verificam o checksum, conferem a
-recusa de HTTP, de versões malformadas e de hash divergente, e executam
-`secrun run` contra um Secrets Manager emulado.
+recusa de HTTP, de versões malformadas e de hash divergente, a orientação dada a
+um usuário sem root (falha antes do download; instalação com `-d` e aviso de
+`PATH`) e executam `secrun run` contra um Secrets Manager emulado.

@@ -42,17 +42,33 @@ como variável de ambiente e **substitui a si mesmo** pelo processo da aplicaç�
 ## Instalação
 
 ```bash
-V=v0.1.0
-curl -fsSL "https://github.com/ueby/secrun-cli/releases/download/$V/install.sh" | sh -s -- -v "$V"   # Debian/Ubuntu
-wget -qO- "https://github.com/ueby/secrun-cli/releases/download/$V/install.sh" | sh -s -- -v "$V"    # Alpine
-go install github.com/ueby/secrun-cli/cmd/secrun@latest                                               # Go 1.27+
+# Versão mais recente (a versão é opcional; sem -v, instala a latest)
+curl -fsSL https://github.com/ueby/secrun-cli/releases/latest/download/install.sh | sudo sh
+
+# Sem sudo, no diretório do usuário
+curl -fsSL https://github.com/ueby/secrun-cli/releases/latest/download/install.sh | sh -s -- -d "$HOME/.local/bin"
+
+# Via Go 1.27+
+go install github.com/ueby/secrun-cli/cmd/secrun@latest
 ```
+
+> O `sudo` vai no `sh`, não no `curl`: `sudo curl ... | sh` executa o instalador
+> sem privilégios. Sem permissão no destino, o instalador para antes de baixar e
+> mostra os comandos corretos.
 
 O `install.sh` detecta a arquitetura (amd64, arm64, armv7, armv6, 386, ppc64le,
 s390x, riscv64), baixa somente via HTTPS, valida o SHA-256 (e, opcionalmente, um
-hash fixado por você com `-s`) e instala em `/usr/local/bin`. Use sempre o
-`install.sh` da própria release, com versão fixa. Para imagens Docker
-Debian/Alpine, builds multi-stage e a imagem `ghcr.io/ueby/secrun`, veja
+hash fixado por você com `-s`) e instala em `/usr/local/bin`. Em **imagens Docker
+de produção**, fixe a versão e use o `install.sh` da mesma release (builds
+reprodutíveis):
+
+```dockerfile
+ARG SECRUN_VERSION=v0.1.0
+RUN wget -qO- "https://github.com/ueby/secrun-cli/releases/download/${SECRUN_VERSION}/install.sh" \
+      | sh -s -- -v "${SECRUN_VERSION}"
+```
+
+Para Debian/Alpine, builds multi-stage e a imagem `ghcr.io/ueby/secrun`, veja
 **[docs/install.md](docs/install.md)**.
 
 ## Uso
