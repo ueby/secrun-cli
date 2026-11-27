@@ -8,7 +8,8 @@ updates:
       aws-sdk:
         patterns: ["github.com/aws/*"]
     commit-message:
-      prefix: "deps"
+      prefix: "fix" # dependência do binário: gera versão patch
+      include: scope # → "fix(deps): ..."
 
   - package-ecosystem: github-actions
     directory: /
@@ -18,11 +19,13 @@ updates:
       actions:
         patterns: ["*"]
     commit-message:
-      prefix: "ci"
+      prefix: "ci" # não gera versão
+      include: scope # → "ci(deps): ..."
 
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
     commit-message:
-      prefix: "deps"
+      prefix: "build" # imagem base do build: não gera versão
+      include: scope # → "build(deps): ..."
