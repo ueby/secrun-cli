@@ -198,6 +198,58 @@ verify_checksum() {
 	fi
 }
 
+# installer_url retorna a URL deste instalador, para os comandos sugeridos ao
+# usuário (versão fixa quando informada, latest caso contrário).
+installer_url() {
+	if [ "$VERSION" = "latest" ]; then
+		printf 'https://github.com/%s/releases/latest/download/install.sh' "$REPO"
+	else
+		printf 'https://github.com/%s/releases/download/%s/install.sh' "$REPO" "$VERSION"
+	fi
+}
+
+# check_install_dir falha ANTES do download se o destino não puder ser
+# escrito (ou criado), orientando o uso correto de sudo ou de -d.
+check_install_dir() {
+	_ci_dir="$INSTALL_DIR"
+	while [ ! -d "$_ci_dir" ]; do # diretório ainda não existe: vale o pai mais próximo
+		_ci_dir=$(dirname "$_ci_dir")
+	done
+	[ -w "$_ci_dir" ] && return 0
+
+	_ci_args=""
+	[ "$VERSION" != "latest" ] && _ci_args=" -v $VERSION"
+	_ci_root_args="$_ci_args"
+	[ "$INSTALL_DIR" != "/usr/local/bin" ] && _ci_root_args="$_ci_root_args -d $INSTALL_DIR"
+	if [ -n "$_ci_root_args" ]; then
+		_ci_root_cmd="curl -fsSL $(installer_url) | sudo sh -s --$_ci_root_args"
+	else
+		_ci_root_cmd="curl -fsSL $(installer_url) | sudo sh"
+	fi
+	log "erro: sem permissão de escrita em $INSTALL_DIR."
+	cat >&2 <<EOF_HINT
+
+  Execute o instalador como root (o sudo vai no "sh", não no "curl"):
+    $_ci_root_cmd
+
+  ou instale no seu usuário, sem sudo:
+    curl -fsSL $(installer_url) | sh -s --$_ci_args -d "\$HOME/.local/bin"
+
+EOF_HINT
+	exit 1
+}
+
+# warn_path avisa quando o diretório de instalação não está no PATH.
+warn_path() {
+	case ":${PATH:-}:" in
+		*":$INSTALL_DIR:"*) ;;
+		*)
+			log "aviso: $INSTALL_DIR não está no PATH. Adicione ao seu shell (ex.: ~/.profile):"
+			log "    export PATH=\"$INSTALL_DIR:\$PATH\""
+			;;
+	esac
+}
+
 install_binary() {
 	tar -xzf "$TMP_DIR/$1" -C "$TMP_DIR" "$BINARY" || fail "falha ao extrair $1"
 	{ [ -f "$TMP_DIR/$BINARY" ] && [ ! -L "$TMP_DIR/$BINARY" ]; } || fail "conteúdo inesperado em $1"
@@ -220,6 +272,7 @@ main() {
 	detect_os
 	detect_arch
 	detect_tools
+	check_install_dir
 
 	TMP_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t secrun)
 	archive="${BINARY}_${OS}_${ARCH}.tar.gz"
@@ -231,6 +284,7 @@ main() {
 	install_binary "$archive"
 
 	log "instalado: $("$INSTALL_DIR/$BINARY" version)"
+	warn_path
 }
 
 # A chamada fica na última linha: se o download via pipe for interrompido no
