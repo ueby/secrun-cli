@@ -139,6 +139,15 @@ jobs:
             echo "Nenhuma mudança que gere versão desde a última tag." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: Validar notas da release
+        if: steps.semrel.outputs.tag != ''
+        run: |
+          if [ ! -s "$SECRUN_RELEASE_NOTES" ]; then
+            echo "::error::Arquivo de notas vazio ou ausente: a release não será publicada sem notas."
+            exit 1
+          fi
+          echo "Notas: $(wc -l < "$SECRUN_RELEASE_NOTES") linhas"
+
       - name: GoReleaser
         if: steps.semrel.outputs.tag != ''
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0

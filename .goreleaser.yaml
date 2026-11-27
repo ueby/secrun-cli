@@ -71,6 +71,8 @@ snapshot:
   version_template: "{{ incpatch .Version }}-snapshot+{{ .ShortCommit }}"
 
 # As notas da release são geradas pelo semantic-release (Conventional Commits)
-# e entregues via --release-notes; o changelog do GoReleaser fica desligado.
+# e entregues via --release-notes. NÃO use "disable: true": é o pipe de
+# changelog que carrega o arquivo de --release-notes; desligado, a release sai
+# sem notas (issue #5). Com --release-notes, nada é gerado a partir do git.
 changelog:
-  disable: true
+  use: git
