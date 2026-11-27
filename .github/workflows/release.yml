@@ -1,61 +1,182 @@
+# Release manual com semantic-release (Node efêmero via npx, sem package.json).
+#
+# Actions > Release > Run workflow (na main), ou:
+#   gh workflow run release.yml -f dry_run=true    # simula: mostra a próxima versão
+#   gh workflow run release.yml -f dry_run=false   # publica
+#
+# Fluxo: CI completo → aprovação no environment "release" → semantic-release
+# (versão pelos Conventional Commits desde a última tag; feat → minor,
+# fix/perf → patch, "!" → major; demais tipos não geram versão) atualiza o
+# CHANGELOG.md, faz o commit "chore(release): X.Y.Z" na main e cria a tag
+# vX.Y.Z → GoReleaser publica a GitHub Release (binários, checksums, install.sh,
+# notas do semantic-release) com atestação SLSA → imagem multi-arch no GHCR.
+#
+# O commit de release e a tag são enviados com a deploy key RELEASE_DEPLOY_KEY
+# (secret do environment "release"), a única exceção nas regras da main e das
+# tags v*. Push feito com o GITHUB_TOKEN não passaria pelas regras.
+
 name: Release
 
 on:
-  push:
-    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Apenas simular (mostra a próxima versão, sem publicar nada)"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 env:
   GORELEASER_VERSION: v2.20.3
+  NODE_VERSION: "26"
   IMAGE: ghcr.io/${{ github.repository_owner }}/secrun
   PLATFORMS: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6,linux/386,linux/ppc64le,linux/s390x,linux/riscv64
 
 jobs:
-  goreleaser:
-    name: Binários e GitHub Release
+  guard:
+    name: Somente na main
     runs-on: ubuntu-latest
-    # Publicação exige aprovação no environment "release" (Settings > Environments).
-    environment: release
-    permissions:
-      contents: write # criar a release e enviar os assets
-      id-token: write # assinar a atestação de proveniência (Sigstore)
-      attestations: write # gravar a atestação no GitHub
     steps:
+      - name: Verificar branch
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::A release só pode ser executada a partir da main (recebido: $REF)."
+            exit 1
+          fi
+
+  ci:
+    name: CI
+    needs: guard
+    uses: ./.github/workflows/ci.yml # zizmor: ignore[self-repository] -- sintaxe "$/" ainda não suportada pelo actionlint
+    permissions:
+      contents: read
+
+  semantic-release:
+    name: semantic-release + GoReleaser
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: release # aprovação obrigatória; secret RELEASE_DEPLOY_KEY
+    permissions:
+      contents: write # criar a GitHub Release (GoReleaser)
+      id-token: write # assinar a atestação de proveniência (Sigstore)
+      attestations: write # gravar a atestação
+    outputs:
+      tag: ${{ steps.semrel.outputs.tag }}
+      version: ${{ steps.semrel.outputs.version }}
+    env:
+      DRY_RUN: ${{ inputs.dry_run }}
+    steps:
+      - name: Preparar caminho das notas
+        run: echo "SECRUN_RELEASE_NOTES=$RUNNER_TEMP/release-notes.md" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          ref: main
+          fetch-depth: 0 # semantic-release precisa do histórico e das tags
           persist-credentials: false
+
+      - name: Configurar deploy key e identidade do commit de release
+        env:
+          DEPLOY_KEY: ${{ secrets.RELEASE_DEPLOY_KEY }}
+        run: |
+          set -eu
+          if [ -z "$DEPLOY_KEY" ]; then
+            echo "::error::Secret RELEASE_DEPLOY_KEY ausente no environment release."
+            exit 1
+          fi
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/release_key
+          chmod 600 ~/.ssh/release_key
+          # Chaves de host oficiais do GitHub (sem confiar no primeiro acesso).
+          curl -fsSL https://api.github.com/meta | jq -r '.ssh_keys[] | "github.com " + .' > ~/.ssh/known_hosts
+          git config --global core.sshCommand "ssh -i ~/.ssh/release_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: false # release sem cache: nada de artefatos de execuções anteriores
-      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+
+      # Versões fixadas: o pacote é baixado só para este job e descartado.
+      # Ao atualizar, mantenha a mesma lista no CONTRIBUTING.md.
+      - name: semantic-release
+        id: semrel
+        run: |
+          set -eu
+          set -- --ci
+          if [ "$DRY_RUN" = "true" ]; then set -- "$@" --dry-run; fi
+          npx --yes \
+            -p semantic-release@26.0.1 \
+            -p @semantic-release/changelog@7.0.0 \
+            -p @semantic-release/git@11.0.1 \
+            -p @semantic-release/exec@7.1.0 \
+            -p conventional-changelog-conventionalcommits@10.4.1 \
+            semantic-release "$@"
+
+      - name: Resumo
+        env:
+          TAG: ${{ steps.semrel.outputs.tag }}
+        run: |
+          if [ -n "$TAG" ]; then
+            { echo "## Release $TAG"; echo; cat "$SECRUN_RELEASE_NOTES"; } >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$DRY_RUN" = "true" ]; then
+            echo "Dry-run: veja a próxima versão no log do passo semantic-release." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Nenhuma mudança que gere versão desde a última tag." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: GoReleaser
+        if: steps.semrel.outputs.tag != ''
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           version: ${{ env.GORELEASER_VERSION }}
-          args: release --clean
+          args: release --clean --release-notes=${{ env.SECRUN_RELEASE_NOTES }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       # Proveniência SLSA dos binários. Verificação:
       #   gh attestation verify secrun_linux_amd64.tar.gz -R ueby/secrun-cli
-      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+      - name: Atestação de proveniência
+        if: steps.semrel.outputs.tag != ''
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-checksums: ./dist/checksums.txt
 
+      - name: Remover deploy key
+        if: always()
+        run: rm -f ~/.ssh/release_key
+
   docker:
     name: Imagem ghcr.io (multi-arch)
-    needs: goreleaser # só publica a imagem se a release (e seus testes) passou
+    needs: semantic-release
+    if: needs.semantic-release.outputs.tag != ''
     runs-on: ubuntu-latest
-    environment: release
+    # Sem environment: só roda depois do job aprovado (evita segunda aprovação).
     permissions:
       contents: read
       packages: write # push para o GHCR
       id-token: write # assinar a atestação de proveniência (Sigstore)
       attestations: write # gravar a atestação no GitHub/registry
+    env:
+      TAG: ${{ needs.semantic-release.outputs.tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.semantic-release.outputs.tag }}
           persist-credentials: false
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
@@ -69,12 +190,14 @@ jobs:
         with:
           images: ${{ env.IMAGE }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
-      - name: Data do commit
+            type=semver,pattern={{version}},value=${{ env.TAG }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ env.TAG }}
+            type=semver,pattern={{major}},value=${{ env.TAG }},enable=${{ !startsWith(env.TAG, 'v0.') }}
+      - name: Commit e data da release
         id: date
-        run: echo "date=$(git log -1 --format=%cI)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "date=$(git log -1 --format=%cI)" >> "$GITHUB_OUTPUT"
       - id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -85,8 +208,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            VERSION=${{ github.ref_name }}
-            COMMIT=${{ github.sha }}
+            VERSION=${{ env.TAG }}
+            COMMIT=${{ steps.date.outputs.commit }}
             DATE=${{ steps.date.outputs.date }}
           provenance: mode=max
           sbom: true
