@@ -47,6 +47,35 @@ if sh /install.sh -s 00000000000000000000000000000000000000000000000000000000000
 fi
 [ ! -e /usr/local/bin/secrun ] || { echo "binário instalado após falha" >&2; exit 1; }
 
+# Executa o instalador como usuário sem privilégios (nobody), repassando só
+# as variáveis necessárias (su não preserva o ambiente de forma portável).
+as_nobody() {
+	su -s /bin/sh nobody -c "env PATH=/usr/local/bin:/usr/bin:/bin \
+		SECRUN_INSTALL_BASE_URL='$SECRUN_INSTALL_BASE_URL' SECRUN_INSTALL_ALLOW_HTTP=1 \
+		sh /install.sh $*"
+}
+
+log "sem permissão: falha antes do download e orienta sudo/-d"
+if out=$(as_nobody 2>&1); then
+	echo "install.sh deveria falhar sem permissão em /usr/local/bin" >&2
+	exit 1
+fi
+echo "$out"
+echo "$out" | grep -q '| sudo sh' || { echo "faltou a sugestão com sudo" >&2; exit 1; }
+# shellcheck disable=SC2016 # procura o texto literal "$HOME" na mensagem
+echo "$out" | grep -q -- '-d "$HOME/.local/bin"' || { echo "faltou a sugestão com -d" >&2; exit 1; }
+if echo "$out" | grep -q 'SHA-256'; then
+	echo "o download deveria ocorrer só depois da checagem de permissão" >&2
+	exit 1
+fi
+
+log "usuário sem root com -d: instala e avisa sobre o PATH"
+out=$(as_nobody -d /tmp/userbin 2>&1)
+echo "$out"
+[ -x /tmp/userbin/secrun ] || { echo "binário não instalado em /tmp/userbin" >&2; exit 1; }
+echo "$out" | grep -q 'não está no PATH' || { echo "faltou o aviso de PATH" >&2; exit 1; }
+rm -rf /tmp/userbin
+
 log "executando install.sh"
 sh /install.sh
 command -v secrun
