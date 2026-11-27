@@ -1,13 +1,13 @@
 # Changelog
 
-Todas as mudanças relevantes deste projeto são documentadas aqui.
+## Escopo inicial (incluído na v0.1.0)
 
-O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
-projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
+As entradas acima desta seção são geradas automaticamente pelo semantic-release a
+partir de [Conventional Commits](https://www.conventionalcommits.org/pt-br/), a cada
+release (veja o [CONTRIBUTING.md](CONTRIBUTING.md#releases)). O projeto adota
+[Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
-## [Não lançado]
-
-### Adicionado
+O escopo inicial da primeira versão:
 
 - Comando `secrun run [flags] -- <comando>`, que injeta segredos do AWS Secrets
   Manager no ambiente e substitui o processo via `exec`, preservando o PID 1.
