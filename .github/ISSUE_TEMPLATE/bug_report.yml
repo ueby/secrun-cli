@@ -1,0 +1,45 @@
+name: Bug
+description: Algo não funciona como documentado
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado pelo reporte! **Nunca cole valores de segredos**: substitua por `***`.
+        Vulnerabilidades devem ser reportadas pelo [canal privado](https://github.com/ueby/secrun-cli/security/advisories/new).
+  - type: input
+    id: version
+    attributes:
+      label: Versão
+      description: Saída de `secrun version`
+      placeholder: secrun v0.1.0 (commit ..., go1.27.4, linux/arm64)
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Onde roda
+      options: [Amazon ECS / Fargate, Amazon EKS (IRSA), Amazon EKS (Pod Identity), EC2 / outro, Local]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: O que aconteceu
+      description: Comportamento observado versus esperado
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Como reproduzir
+      description: Comando, ENTRYPOINT/CMD, variáveis SECRUN_* e formato do segredo (sem valores)
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Saída com --verbose
+      description: Saída de `secrun run --verbose ...` (o modo verbose não exibe valores)
+      render: text
