@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.0](https://github.com/ueby/secrun-cli/compare/v0.0.0...v0.1.0) (2026-11-27)
+
+### Features
+
+* secrun — injetor de segredos do AWS Secrets Manager para ECS/EKS ([d98dd0c](https://github.com/ueby/secrun-cli/commit/d98dd0c7f6a6878d2d7e53752af258bf6c9a127a))
+
 ## Escopo inicial (incluído na v0.1.0)
 
 As entradas acima desta seção são geradas automaticamente pelo semantic-release a
