@@ -1,0 +1,15 @@
+# Artefatos de build
+/bin/
+/dist/
+
+# Cobertura de testes
+coverage.out
+coverage.html
+
+# Corpus gerado pelo fuzzing local (casos que falharam ficam em testdata/fuzz e devem ser versionados)
+/internal/**/fuzz-cache/
+
+# IDE / SO
+.idea/
+.vscode/
+.DS_Store

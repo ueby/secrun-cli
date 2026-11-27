@@ -1,0 +1,79 @@
+# Configuração do GoReleaser v2 (https://goreleaser.com)
+#
+# Release:   git tag v1.0.0 && git push origin v1.0.0   (executado pelo workflow release.yml)
+# Snapshot:  make snapshot                               (artefatos locais em ./dist)
+version: 2
+
+project_name: secrun
+
+before:
+  hooks:
+    - go mod tidy -diff # falha se go.mod/go.sum estiverem desatualizados (não altera nada)
+    - go mod verify
+    - go test ./...
+
+builds:
+  - id: secrun
+    main: ./cmd/secrun
+    binary: secrun
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/ueby/secrun-cli/internal/version.Version=v{{ .Version }}
+      - -X github.com/ueby/secrun-cli/internal/version.Commit={{ .FullCommit }}
+      - -X github.com/ueby/secrun-cli/internal/version.Date={{ .CommitDate }}
+    mod_timestamp: "{{ .CommitTimestamp }}" # builds reprodutíveis
+    # O secrun depende de syscall.Exec, por isso Windows não é suportado.
+    goos: [linux, darwin]
+    goarch: [amd64, arm64, arm, "386", ppc64le, s390x, riscv64]
+    goarm: ["6", "7"]
+    ignore:
+      - goos: darwin
+        goarch: arm
+      - goos: darwin
+        goarch: "386"
+      - goos: darwin
+        goarch: ppc64le
+      - goos: darwin
+        goarch: s390x
+      - goos: darwin
+        goarch: riscv64
+
+archives:
+  - formats: [tar.gz]
+    # Nomes sem versão, para que .../releases/latest/download/<arquivo> funcione
+    # (usado pelo install.sh). Ex.: secrun_linux_amd64.tar.gz, secrun_linux_armv7.tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+release:
+  github:
+    owner: ueby
+    name: secrun-cli
+  extra_files:
+    - glob: ./install.sh
+  prerelease: auto
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot+{{ .ShortCommit }}"
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"

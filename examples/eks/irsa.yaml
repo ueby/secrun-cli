@@ -1,0 +1,40 @@
+# EKS com IRSA (IAM Roles for Service Accounts).
+# O webhook do EKS injeta AWS_ROLE_ARN, AWS_WEB_IDENTITY_TOKEN_FILE e AWS_REGION
+# no pod; o secrun os utiliza automaticamente pela cadeia de credenciais do SDK.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: checkout-api-sa
+  namespace: prod
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::999999999999:role/eks-checkout-prod-role
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-api
+  namespace: prod
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: checkout-api
+  template:
+    metadata:
+      labels:
+        app: checkout-api
+    spec:
+      serviceAccountName: checkout-api-sa
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: checkout-api
+          image: 111111111111.dkr.ecr.us-east-1.amazonaws.com/checkout-api:1.4.2
+          env:
+            - name: SECRUN_IDS
+              value: "secrun/shared/prod,secrun/checkout-api/prod"
+          securityContext:
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]

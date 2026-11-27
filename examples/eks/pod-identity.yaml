@@ -1,0 +1,49 @@
+# EKS Pod Identity: a associação entre ServiceAccount e IAM Role é feita fora
+# do cluster, por exemplo:
+#
+#   aws eks create-pod-identity-association \
+#     --cluster-name prod --namespace prod \
+#     --service-account checkout-api-sa \
+#     --role-arn arn:aws:iam::999999999999:role/eks-checkout-prod-role
+#
+# O agente do Pod Identity injeta AWS_CONTAINER_CREDENTIALS_FULL_URI no pod;
+# nenhuma anotação é necessária na ServiceAccount.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: checkout-api-sa
+  namespace: prod
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-api
+  namespace: prod
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: checkout-api
+  template:
+    metadata:
+      labels:
+        app: checkout-api
+    spec:
+      serviceAccountName: checkout-api-sa
+      containers:
+        - name: checkout-api
+          image: 111111111111.dkr.ecr.us-east-1.amazonaws.com/checkout-api:1.4.2
+          env:
+            - name: SECRUN_IDS
+              value: "secrun/shared/prod,secrun/checkout-api/prod"
+            # Cross-account opcional:
+            # - name: SECRUN_ROLE_ARN
+            #   value: arn:aws:iam::888888888888:role/secrun-reader
+            # - name: SECRUN_EXTERNAL_ID
+            #   value: "<external-id>"   # ExternalId não é segredo: fica em texto claro
+          securityContext:
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
