@@ -1,0 +1,23 @@
+{
+  "branches": ["main"],
+  "tagFormat": "v${version}",
+  "repositoryUrl": "git@github.com:ueby/secrun-cli.git",
+  "plugins": [
+    ["@semantic-release/commit-analyzer", { "preset": "conventionalcommits" }],
+    ["@semantic-release/release-notes-generator", { "preset": "conventionalcommits" }],
+    ["@semantic-release/changelog", { "changelogFile": "CHANGELOG.md", "changelogTitle": "# Changelog" }],
+    [
+      "@semantic-release/git",
+      {
+        "assets": ["CHANGELOG.md"],
+        "message": "chore(release): ${nextRelease.version}\n\n${nextRelease.notes}"
+      }
+    ],
+    [
+      "@semantic-release/exec",
+      {
+        "publishCmd": "printf '%s' '${Buffer.from(nextRelease.notes).toString(\"base64\")}' | base64 -d > \"$SECRUN_RELEASE_NOTES\" && printf 'version=%s\\ntag=%s\\n' '${nextRelease.version}' '${nextRelease.gitTag}' >> \"$GITHUB_OUTPUT\""
+      }
+    ]
+  ]
+}

@@ -5,13 +5,16 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call: # reutilizado pelo workflow Release antes de publicar
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # github.workflow distingue a execução própria da chamada pelo Release,
+  # que não pode ser cancelada por um push na main.
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.workflow == 'CI' }}
 
 env:
   GOLANGCI_LINT_VERSION: v2.15.0

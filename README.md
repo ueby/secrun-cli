@@ -177,6 +177,9 @@ Antes disso, o `secrun` usa:
 
 ## Desenvolvimento
 
+Contribuições são bem-vindas! Veja o **[CONTRIBUTING.md](CONTRIBUTING.md)** para o
+fluxo completo (issue → PR com Conventional Commits → squash merge → release).
+
 Requisitos: Go 1.27+ (o `go.mod` fixa `toolchain go1.27.4`; com `GOTOOLCHAIN=auto` ele
 é baixado automaticamente) e, para os testes de instalação, Docker.
 
@@ -192,17 +195,22 @@ make e2e-install   # testa o install.sh em container (E2E_IMAGE=alpine:3.24 E2E_
 
 | Workflow | Gatilho | O que faz |
 |---|---|---|
-| [`ci.yml`](.github/workflows/ci.yml) | push em `main`, PRs | lint (golangci-lint, gofmt, go mod tidy, shellcheck); testes com race em Linux amd64/arm64 e macOS; fuzzing; govulncheck; build de todas as arquiteturas; `install.sh` em Debian 12/13, Ubuntu 24.04 e Alpine × amd64/arm64/armv7; build da imagem para 8 plataformas |
-| [`release.yml`](.github/workflows/release.yml) | tag `v*` (com aprovação no environment `release`) | GitHub Release (binários, `checksums.txt`, `install.sh`) via GoReleaser e imagem `ghcr.io/ueby/secrun` multi-arch, ambos com atestação de proveniência SLSA; imagem com SBOM |
+| [`ci.yml`](.github/workflows/ci.yml) | push em `main`, PRs, chamado pelo Release | lint (golangci-lint, gofmt, go mod tidy, shellcheck); testes com race em Linux amd64/arm64 e macOS; fuzzing; govulncheck; build de todas as arquiteturas; `install.sh` em Debian 12/13, Ubuntu 24.04 e Alpine × amd64/arm64/armv7; build da imagem para 8 plataformas |
+| [`release.yml`](.github/workflows/release.yml) | manual (`workflow_dispatch`, dry-run por padrão), com aprovação no environment `release` | CI completo → semantic-release (versão pelos Conventional Commits, `CHANGELOG.md`, tag) → GitHub Release via GoReleaser (binários, `checksums.txt`, `install.sh`) → imagem `ghcr.io/ueby/secrun` multi-arch; atestação SLSA e SBOM |
+| [`pr-title.yml`](.github/workflows/pr-title.yml) | PRs | Valida o título do PR no padrão Conventional Commits (ele vira a mensagem do squash) |
 | [`codeql.yml`](.github/workflows/codeql.yml) | push, PRs, semanal | Análise estática (Go e GitHub Actions) |
 | [`scorecard.yml`](.github/workflows/scorecard.yml) | push, semanal | OpenSSF Scorecard das práticas de supply chain |
 
-Para publicar uma versão, crie e envie uma tag (de preferência assinada) e aprove
-a execução no environment `release`:
+Para publicar uma versão, rode o workflow **Release** (primeiro em dry-run) e
+aprove a execução no environment `release`:
 
 ```bash
-git tag -s v0.1.0 -m "v0.1.0" && git push origin v0.1.0
+gh workflow run release.yml -R ueby/secrun-cli -f dry_run=true    # mostra a próxima versão
+gh workflow run release.yml -R ueby/secrun-cli -f dry_run=false   # publica
 ```
+
+O semantic-release roda via `npx` apenas dentro do pipeline; o projeto não tem
+`package.json`. Detalhes em [CONTRIBUTING.md](CONTRIBUTING.md#releases).
 
 As actions são fixadas por SHA de commit, os workflows usam permissões mínimas e
 não persistem credenciais, e o Dependabot mantém Go, actions e imagens
@@ -230,4 +238,5 @@ Para mais detalhes, veja:
 - [docs/architecture.md](docs/architecture.md): decisões de design e fluxo de execução
 - [docs/operations.md](docs/operations.md): implantação, IAM e troubleshooting
 - [SECURITY.md](SECURITY.md): modelo de ameaças e reporte de vulnerabilidades
-- [CHANGELOG.md](CHANGELOG.md)
+- [CONTRIBUTING.md](CONTRIBUTING.md): fluxo de contribuição, Conventional Commits e releases
+- [CHANGELOG.md](CHANGELOG.md): gerado automaticamente a cada release

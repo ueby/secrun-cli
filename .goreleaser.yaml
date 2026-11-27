@@ -1,7 +1,9 @@
 # Configuração do GoReleaser v2 (https://goreleaser.com)
 #
-# Release:   git tag v1.0.0 && git push origin v1.0.0   (executado pelo workflow release.yml)
-# Snapshot:  make snapshot                               (artefatos locais em ./dist)
+# Release:   workflow manual "Release" (.github/workflows/release.yml). O
+#            semantic-release cria a tag vX.Y.Z e as notas; o GoReleaser é
+#            chamado em seguida com --release-notes e publica os artefatos.
+# Snapshot:  make snapshot   (artefatos locais em ./dist; usado no CI)
 version: 2
 
 project_name: secrun
@@ -68,12 +70,7 @@ release:
 snapshot:
   version_template: "{{ incpatch .Version }}-snapshot+{{ .ShortCommit }}"
 
+# As notas da release são geradas pelo semantic-release (Conventional Commits)
+# e entregues via --release-notes; o changelog do GoReleaser fica desligado.
 changelog:
-  use: github
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
-      - "^ci:"
-      - "^chore:"
+  disable: true

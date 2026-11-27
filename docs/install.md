@@ -24,7 +24,9 @@ busybox (Alpine) e no macOS.
 
 Use sempre o `install.sh` **da própria release**, com a **versão fixa**. Assim
 você executa exatamente o código revisado e publicado naquela versão, e não o
-estado atual do branch `main`:
+estado atual do branch `main`. Os exemplos usam `v0.1.0`; consulte a versão mais
+recente em [Releases](https://github.com/ueby/secrun-cli/releases/latest) e as
+mudanças no [CHANGELOG](../CHANGELOG.md).
 
 ```bash
 V=v0.1.0

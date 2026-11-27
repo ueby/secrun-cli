@@ -37,6 +37,7 @@ entrega segredos à aplicação via variáveis de ambiente.
 | Escrita no segredo ≠ execução de código | Segredos não podem definir, por padrão, variáveis que alteram a execução, a identidade ou o tráfego da aplicação (ver abaixo). |
 | Binário resolvido com o PATH do container | O comando após `--` é localizado com o `PATH` original, nunca com um valor vindo de segredo. |
 | Supply chain | Releases com `checksums.txt` e atestação de proveniência SLSA (Sigstore); imagem com SBOM e proveniência; actions fixadas por SHA; imagens base fixadas por digest. |
+| Processo de release | Manual, a partir da `main`, após CI completo e com aprovação no environment `release`. A versão vem dos Conventional Commits (semantic-release); o commit de release e a tag são enviados por uma deploy key restrita a esse environment, única exceção às regras de proteção. Releases são imutáveis. |
 
 ### Variáveis bloqueadas
 

@@ -1,0 +1,39 @@
+# Valida o título do PR no padrão Conventional Commits. Como o merge é feito
+# por squash com o título do PR como mensagem, é ele que o semantic-release lê
+# para decidir a próxima versão.
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  conventional-title:
+    name: Conventional PR title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validar título
+        env:
+          TITLE: ${{ github.event.pull_request.title }} # via env: nunca interpolado no script
+        run: |
+          pattern='^(feat|fix|perf|refactor|docs|test|build|ci|chore|revert|style)(\([a-z0-9._/-]+\))?!?: [^ ].{0,99}$'
+          if printf '%s' "$TITLE" | grep -Eq "$pattern"; then
+            echo "Título válido: $TITLE"
+            exit 0
+          fi
+          cat <<'MSG' >> "$GITHUB_STEP_SUMMARY"
+          ## Título de PR fora do padrão Conventional Commits
+
+          Formato: `tipo(escopo opcional): descrição` (até 100 caracteres), por exemplo:
+
+          - `feat: adiciona flag --foo` → versão minor
+          - `fix(install): corrige detecção de armv8l` → versão patch
+          - `feat!: remove a flag --bar` → versão major (breaking change)
+          - `docs: ...`, `ci: ...`, `test: ...`, `refactor: ...`, `chore: ...` → sem nova versão
+
+          Veja o CONTRIBUTING.md.
+          MSG
+          echo "::error::Título fora do padrão Conventional Commits: $TITLE"
+          exit 1

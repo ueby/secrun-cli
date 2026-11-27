@@ -1,0 +1,29 @@
+name: Proposta de melhoria
+description: Nova funcionalidade ou mudança de comportamento
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema
+      description: Que problema ou limitação você enfrenta hoje?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposta
+      description: Como você imagina a solução (flags, variáveis, comportamento)?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Impacto
+      options:
+        - label: Muda um comportamento existente (possível breaking change)
+        - label: Afeta segurança (logs, variáveis bloqueadas, credenciais, supply chain)
