@@ -91,6 +91,7 @@ o processo de teste. `secrets.Client` é uma interface com o único método usad
 | Tentativas por chamada | 5 | `awsconfig.DefaultMaxAttempts` |
 | Backoff máximo | 2s (exponencial com jitter) | `awsconfig.DefaultMaxBackoff` |
 | Timeout por tentativa | `--timeout`/3, entre 1s e 5s | `cli.attemptTimeout` |
+| Consulta da região ao IMDS | até 2s, no máximo 2 tentativas (só sem região configurada) | `awsconfig.IMDSRegionTimeout` |
 | Timeout total | 10s (configurável) | `--timeout` / `SECRUN_TIMEOUT` |
 
 O timeout total cobre todo o processo: resolução de região, AssumeRole e todas as
