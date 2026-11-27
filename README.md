@@ -200,6 +200,7 @@ make e2e-install   # testa o install.sh em container (E2E_IMAGE=alpine:3.24 E2E_
 | [`pr-title.yml`](.github/workflows/pr-title.yml) | PRs | Valida o título do PR no padrão Conventional Commits (ele vira a mensagem do squash) |
 | [`codeql.yml`](.github/workflows/codeql.yml) | push, PRs, semanal | Análise estática (Go e GitHub Actions) |
 | [`scorecard.yml`](.github/workflows/scorecard.yml) | push, semanal | OpenSSF Scorecard das práticas de supply chain |
+| [`roots-check.yml`](.github/workflows/roots-check.yml) | mensal | Abre uma issue quando há certificados raiz embutidos mais novos (módulo que o Dependabot não atualiza) |
 
 Para publicar uma versão, rode o workflow **Release** (primeiro em dry-run) e
 aprove a execução no environment `release`:
@@ -214,7 +215,7 @@ O semantic-release roda via `npx` apenas dentro do pipeline; o projeto não tem
 
 As actions são fixadas por SHA de commit, os workflows usam permissões mínimas e
 não persistem credenciais, e o Dependabot mantém Go, actions e imagens
-atualizados.
+atualizados (veja [Dependências](CONTRIBUTING.md#dependências)).
 
 Estrutura:
 

@@ -53,8 +53,24 @@ Antes de abrir o PR, rode pelo menos `make check lint`.
 - **Testes:** todo comportamento novo ou corrigido precisa de teste. O pacote
   `internal/fakesm` emula o Secrets Manager para testes e2e sem AWS.
 - **Dependências:** evite novas. O binário depende só da stdlib, do AWS SDK e de
-  `x/crypto/x509roots/fallback`.
+  `x/crypto/x509roots/fallback` (veja [Dependências](#dependências)).
 - **Documentação:** atualize o README e o `docs/` junto com o código.
+
+## Dependências
+
+O **Dependabot** abre PRs semanais para módulos Go, GitHub Actions e a imagem
+base do `Dockerfile`, já com títulos no padrão Conventional Commits.
+
+A exceção é o `golang.org/x/crypto/x509roots/fallback`, que embute os
+certificados raiz da Mozilla usados quando a imagem não tem `ca-certificates`.
+Ele é um módulo aninhado, sem tags de versão, e o Dependabot não consegue
+atualizá-lo (#3). Por isso:
+
+- o workflow mensal [Roots check](.github/workflows/roots-check.yml) compara a
+  versão em uso com a mais recente e, se houver novidade, abre ou atualiza a
+  issue *"Atualizar certificados raiz embutidos"*;
+- a atualização é feita com `make update-roots` e entra por PR com o título
+  `fix(deps): atualiza certificados raiz embutidos`, que gera uma versão patch.
 
 ## Conventional Commits
 

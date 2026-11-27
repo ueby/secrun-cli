@@ -105,6 +105,12 @@ lint: ## Executa golangci-lint (https://golangci-lint.run)
 vuln: ## Verifica vulnerabilidades conhecidas com govulncheck
 	GOTOOLCHAIN=$(TOOLCHAIN) go run $(GOVULN) ./...
 
+.PHONY: update-roots
+update-roots: ## Atualiza os certificados raiz embutidos (x509roots/fallback; sem Dependabot)
+	go get golang.org/x/crypto/x509roots/fallback@latest
+	go mod tidy
+	@go list -m golang.org/x/crypto/x509roots/fallback
+
 .PHONY: fmt
 fmt: ## Formata o código
 	gofmt -w .

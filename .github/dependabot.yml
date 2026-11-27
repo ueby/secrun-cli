@@ -7,6 +7,12 @@ updates:
     groups:
       aws-sdk:
         patterns: ["github.com/aws/*"]
+    ignore:
+      # Módulo aninhado em golang.org/x/crypto, sem tags (só pseudo-versões): o
+      # Dependabot o confunde com o módulo pai e falha (issue #3). Ele é
+      # monitorado pelo workflow roots-check.yml e atualizado com
+      # `make update-roots`.
+      - dependency-name: "golang.org/x/crypto/x509roots/fallback"
     commit-message:
       prefix: "fix" # dependência do binário: gera versão patch
       include: scope # → "fix(deps): ..."
