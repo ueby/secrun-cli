@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.0](https://github.com/ueby/secrun-cli/compare/v0.1.0...v0.2.0) (2026-11-28)
+
+### Features
+
+* **install:** orienta sudo/-d quando falta permissão e avisa sobre o PATH ([#10](https://github.com/ueby/secrun-cli/issues/10)) ([b0dcaa1](https://github.com/ueby/secrun-cli/commit/b0dcaa12c8efb1e22c42b1c0524d56663796466a))
+
+### Bug Fixes
+
+* **aws:** falha rápido e com mensagem clara quando a região não está definida ([#9](https://github.com/ueby/secrun-cli/issues/9)) ([a3e9298](https://github.com/ueby/secrun-cli/commit/a3e9298265ad659cad5c54226d82b64bfac1fe8d))
+
 ## [0.1.0](https://github.com/ueby/secrun-cli/compare/v0.0.0...v0.1.0) (2026-11-27)
 
 ### Features
